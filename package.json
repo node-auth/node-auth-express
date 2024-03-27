@@ -13,21 +13,25 @@
     "url": "git+https://github.com/node-auth/node-auth-middeware.git"
   },
   "keywords": [
-    "node-auth-express"
+    "node-auth-express",
+    "oauth",
+    "express"
   ],
   "author": "node-auth",
-  "license": "ISC",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/node-auth/node-auth-middeware/issues"
   },
   "homepage": "https://github.com/node-auth/node-auth-middeware#readme",
   "devDependencies": {
+    "@types/express": "^4.17.21",
     "@types/jest": "^29.5.12",
     "jest": "^29.7.0",
     "ts-jest": "^29.1.2",
     "typescript": "^5.4.3"
   },
   "dependencies": {
+    "axios": "^1.6.8",
     "jsonwebtoken": "^9.0.2"
   }
 }

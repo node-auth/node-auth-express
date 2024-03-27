@@ -108,7 +108,7 @@ function authenticate(req: Request, res: Response, next: NextFunction) {
         const _nodeAuthConfig = req.nodeAuthConfig;
         const validatedToken = await validateToken(token, _nodeAuthConfig);
         if(validatedToken['success'] == false) return res.status(401).json({ success: false, message: 'Unauthorize'})
-        req.user = validatedToken;
+        req.user = validatedToken.data;
         next();
     }
     _auth();

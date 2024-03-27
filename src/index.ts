@@ -107,7 +107,7 @@ function authenticate(req: Request, res: Response, next: NextFunction) {
         }
         const _nodeAuthConfig = req.nodeAuthConfig;
         const validatedToken = await validateToken(token, _nodeAuthConfig);
-        if(validatedToken['success'] == false) return res.status(401).json({ success: false, message: 'Unauthorize'})
+        if(validatedToken['success'] == false) return res.status(401).json({ success: false, message: 'Unauthorize'});
         req.user = validatedToken.data;
         next();
     }
@@ -125,7 +125,7 @@ function permissions(permissionList: string[]) {
         let isPermitted = true;
         const userPermissions = req.user.permissions?.[oauthConfig.baseUrl];
         if (!userPermissions) {
-            return res.status(401).json({ error: 'Permissions not available' });
+            return res.status(401).json({ success: false, message: 'Unauthorize'});
         }
         for (let i = 0; i < permissionList.length; i++) {
             const checkPermission = userPermissions.includes(permissionList[i]);
@@ -134,7 +134,7 @@ function permissions(permissionList: string[]) {
                 break;
             }
         }
-        if(!isPermitted) return res.status(401).json({ error: 'Unauthorize' });
+        if(!isPermitted) return res.status(401).json({ success: false, message: 'Unauthorize'});
         next();
     }
 }

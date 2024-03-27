@@ -113,7 +113,7 @@ function permissions(permissionList) {
         let isPermitted = true;
         const userPermissions = (_a = req.user.permissions) === null || _a === void 0 ? void 0 : _a[oauthConfig.baseUrl];
         if (!userPermissions) {
-            return res.status(401).json({ error: 'Permissions not available' });
+            return res.status(401).json({ success: false, message: 'Unauthorize' });
         }
         for (let i = 0; i < permissionList.length; i++) {
             const checkPermission = userPermissions.includes(permissionList[i]);
@@ -123,7 +123,7 @@ function permissions(permissionList) {
             }
         }
         if (!isPermitted)
-            return res.status(401).json({ error: 'Unauthorize' });
+            return res.status(401).json({ success: false, message: 'Unauthorize' });
         next();
     };
 }

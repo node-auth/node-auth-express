@@ -123,7 +123,7 @@ function authenticate(req: Request, res: Response, next: NextFunction) {
 function permissions(permissionList: string[]) {
     return (req: Request, res: Response, next: NextFunction) => {
         let isPermitted = true;
-        const userPermissions = req.user.permissions?.[oauthConfig.baseUrl];
+        const userPermissions = req.user.permissions?.[oauthConfig.audience];
         if (!userPermissions) {
             return res.status(401).json({ success: false, message: 'Unauthorize'});
         }

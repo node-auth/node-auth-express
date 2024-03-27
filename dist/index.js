@@ -111,7 +111,7 @@ function permissions(permissionList) {
     return (req, res, next) => {
         var _a;
         let isPermitted = true;
-        const userPermissions = (_a = req.user.permissions) === null || _a === void 0 ? void 0 : _a[oauthConfig.baseUrl];
+        const userPermissions = (_a = req.user.permissions) === null || _a === void 0 ? void 0 : _a[oauthConfig.audience];
         if (!userPermissions) {
             return res.status(401).json({ success: false, message: 'Unauthorize' });
         }

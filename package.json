@@ -1,8 +1,8 @@
 {
   "name": "node-auth-express",
-  "version": "1.0.1",
+  "version": "1.0.3",
   "description": "Middleware for authorization",
-  "main": "src/index.js",
+  "main": "dist/index.js",
   "scripts": {
     "test": "jest",
     "start": "ts-node src/index.ts",

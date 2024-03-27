@@ -29,7 +29,7 @@ let oauthConfig = {
  * @param oauthConfigParam
  * @returns
  */
-function auth(oauthConfigParam) {
+function nodeAuth(oauthConfigParam) {
     return __awaiter(this, void 0, void 0, function* () {
         return (req, res, next) => {
             /**
@@ -40,6 +40,7 @@ function auth(oauthConfigParam) {
              * Set the nodeAuthConfig for next middleware consumption
              */
             req.nodeAuthConfig = oauthConfig;
+            next();
         };
     });
 }
@@ -128,4 +129,4 @@ function permissions(permissionList) {
         };
     });
 }
-module.exports = { auth, authenticate, permissions };
+module.exports = { nodeAuth, authenticate, permissions };

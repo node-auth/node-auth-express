@@ -96,7 +96,7 @@ function authenticate(req, res, next) {
         const validatedToken = yield validateToken(token, _nodeAuthConfig);
         if (validatedToken['success'] == false)
             return res.status(401).json({ success: false, message: 'Unauthorize' });
-        req.user = validatedToken;
+        req.user = validatedToken.data;
         next();
     });
     _auth();

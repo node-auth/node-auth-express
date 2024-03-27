@@ -6,6 +6,4 @@ export interface OauthConfig {
     audience: string
 }
 
-export interface TokenResponse {
-    
-}
+export interface TokenResponse {}

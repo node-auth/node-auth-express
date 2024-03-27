@@ -5,6 +5,7 @@
     
     /* Modules */
     "module": "commonjs",                         /* Specify what module code is generated. */
+    "outDir": "./dist",
     
     /* Interop Constraints */
     "esModuleInterop": true,                      /* Disable resolving symlinks to their realpath. This correlates to the same flag in node. */

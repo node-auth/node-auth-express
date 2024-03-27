@@ -1,6 +1,6 @@
 {
   "name": "node-auth-express",
-  "version": "0.1.0",
+  "version": "1.0.1",
   "description": "Middleware for authorization",
   "main": "src/index.js",
   "scripts": {
@@ -10,7 +10,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/node-auth/node-auth-middeware.git"
+    "url": "git+https://github.com/node-auth/node-auth-express.git"
   },
   "keywords": [
     "node-auth-express",
@@ -19,10 +19,11 @@
   ],
   "author": "node-auth",
   "license": "MIT",
+  "registry": "https://registry.npmjs.org/",
   "bugs": {
-    "url": "https://github.com/node-auth/node-auth-middeware/issues"
+    "url": "https://github.com/node-auth/node-auth-express/issues"
   },
-  "homepage": "https://github.com/node-auth/node-auth-middeware#readme",
+  "homepage": "https://github.com/node-auth/node-auth-express#readme",
   "devDependencies": {
     "@types/express": "^4.17.21",
     "@types/jest": "^29.5.12",

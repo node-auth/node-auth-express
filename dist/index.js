@@ -59,23 +59,23 @@ function setOauthConfig(oauthConfigParam) {
  * @param token
  * @returns object
  */
-function validateToken(token) {
+function validateToken(token, nodeAuthConfig) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            const csrfTokenResponse = yield axios.get(`${oauthConfig.issuerBaseUrl}/o/csrf-token`);
-            const response = yield axios.post(`${oauthConfig.issuerBaseUrl}/o/instrospect`, {
-                client_id: oauthConfig.clientId,
-                client_secret: oauthConfig.clientSecret,
+            const csrfTokenResponse = yield axios.get(`${nodeAuthConfig.issuerBaseUrl}/o/csrf-token`);
+            const response = yield axios.post(`${nodeAuthConfig.issuerBaseUrl}/o/instrospect`, {
+                client_id: nodeAuthConfig.clientId,
+                client_secret: nodeAuthConfig.clientSecret,
                 token
             }, {
                 headers: {
-                    'X-CSRF-Token': csrfTokenResponse.data['csrfToken']
+                    'x-csrf-token': csrfTokenResponse.data['csrfToken']
                 }
             });
             return response.data;
         }
         catch (err) {
-            return { success: false, message: 'Invalid token' };
+            return { success: false, message: err };
         }
     });
 }
@@ -92,10 +92,11 @@ function authenticate(req, res, next) {
         if (!token) {
             return res.status(401).json({ success: false, message: 'Unauthorize' });
         }
-        const validatedToken = yield validateToken(token);
+        const _nodeAuthConfig = req.nodeAuthConfig;
+        const validatedToken = yield validateToken(token, _nodeAuthConfig);
         if (validatedToken['success'] == false)
             return res.status(401).json({ success: false, message: 'Unauthorize' });
-        req.user = validatedToken.data;
+        req.user = validatedToken;
         next();
     });
     _auth();

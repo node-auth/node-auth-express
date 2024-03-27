@@ -74,21 +74,21 @@ function setOauthConfig(oauthConfigParam: OauthConfig) {
  * @param token 
  * @returns object
  */
-async function validateToken(token: string) {
+async function validateToken(token: string, nodeAuthConfig: OauthConfig) {
     try {
-        const csrfTokenResponse = await axios.get(`${oauthConfig.issuerBaseUrl}/o/csrf-token`);
-        const response = await axios.post(`${oauthConfig.issuerBaseUrl}/o/instrospect`, {
-            client_id: oauthConfig.clientId,
-            client_secret: oauthConfig.clientSecret,
+        const csrfTokenResponse = await axios.get(`${nodeAuthConfig.issuerBaseUrl}/o/csrf-token`);
+        const response = await axios.post(`${nodeAuthConfig.issuerBaseUrl}/o/instrospect`, {
+            client_id: nodeAuthConfig.clientId,
+            client_secret: nodeAuthConfig.clientSecret,
             token
         }, {
             headers: {
-                'X-CSRF-Token': csrfTokenResponse.data['csrfToken']
+                'x-csrf-token': csrfTokenResponse.data['csrfToken']
             }
         });
         return response.data;
     } catch(err) {
-        return {success: false, message: 'Invalid token'}
+        return {success: false, message: err}
     }
 }
 
@@ -105,9 +105,10 @@ function authenticate(req: Request, res: Response, next: NextFunction) {
         if (!token) {
             return res.status(401).json({ success: false, message: 'Unauthorize' });
         }
-        const validatedToken = await validateToken(token);
+        const _nodeAuthConfig = req.nodeAuthConfig;
+        const validatedToken = await validateToken(token, _nodeAuthConfig);
         if(validatedToken['success'] == false) return res.status(401).json({ success: false, message: 'Unauthorize'})
-        req.user = validatedToken.data;
+        req.user = validatedToken;
         next();
     }
     _auth();

@@ -30,19 +30,17 @@ let oauthConfig = {
  * @returns
  */
 function nodeAuth(oauthConfigParam) {
-    return __awaiter(this, void 0, void 0, function* () {
-        return (req, res, next) => {
-            /**
-             * Set configuration
-             */
-            setOauthConfig(oauthConfigParam);
-            /**
-             * Set the nodeAuthConfig for next middleware consumption
-             */
-            req.nodeAuthConfig = oauthConfig;
-            next();
-        };
-    });
+    return (req, res, next) => {
+        /**
+         * Set configuration
+         */
+        setOauthConfig(oauthConfigParam);
+        /**
+         * Set the nodeAuthConfig for next middleware consumption
+         */
+        req.nodeAuthConfig = oauthConfig;
+        next();
+    };
 }
 /**
  * Set authentication configuration
@@ -88,7 +86,7 @@ function validateToken(token) {
  * @param next
  */
 function authenticate(req, res, next) {
-    return __awaiter(this, void 0, void 0, function* () {
+    const _auth = () => __awaiter(this, void 0, void 0, function* () {
         const authHeader = req.headers['authorization'];
         const token = authHeader && authHeader.split(' ')[1]; // Bearer <token>
         if (!token) {
@@ -100,6 +98,7 @@ function authenticate(req, res, next) {
         req.user = validatedToken.data;
         next();
     });
+    _auth();
 }
 /**
  * Permission
@@ -108,25 +107,23 @@ function authenticate(req, res, next) {
  * @param next
  */
 function permissions(permissionList) {
-    return __awaiter(this, void 0, void 0, function* () {
-        return (req, res, next) => {
-            var _a;
-            let isPermitted = true;
-            const userPermissions = (_a = req.user.permissions) === null || _a === void 0 ? void 0 : _a[oauthConfig.baseUrl];
-            if (!userPermissions) {
-                return res.status(401).json({ error: 'Permissions not available' });
+    return (req, res, next) => {
+        var _a;
+        let isPermitted = true;
+        const userPermissions = (_a = req.user.permissions) === null || _a === void 0 ? void 0 : _a[oauthConfig.baseUrl];
+        if (!userPermissions) {
+            return res.status(401).json({ error: 'Permissions not available' });
+        }
+        for (let i = 0; i < permissionList.length; i++) {
+            const checkPermission = userPermissions.includes(permissionList[i]);
+            if (!checkPermission) {
+                isPermitted = false;
+                break;
             }
-            for (let i = 0; i < permissionList.length; i++) {
-                const checkPermission = userPermissions.includes(permissionList[i]);
-                if (!checkPermission) {
-                    isPermitted = false;
-                    break;
-                }
-            }
-            if (!isPermitted)
-                return res.status(401).json({ error: 'Unauthorize' });
-            next();
-        };
-    });
+        }
+        if (!isPermitted)
+            return res.status(401).json({ error: 'Unauthorize' });
+        next();
+    };
 }
 module.exports = { nodeAuth, authenticate, permissions };

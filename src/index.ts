@@ -41,7 +41,7 @@ let oauthConfig : OauthConfig = {
  * @param oauthConfigParam 
  * @returns 
  */
-async function nodeAuth(oauthConfigParam: OauthConfig) {
+function nodeAuth(oauthConfigParam: OauthConfig) {
     return (req: Request, res: Response, next: NextFunction) => {
         /**
          * Set configuration
@@ -98,16 +98,19 @@ async function validateToken(token: string) {
  * @param res 
  * @param next 
  */
-async function authenticate(req: Request, res: Response, next: NextFunction) {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1]; // Bearer <token>
-    if (!token) {
-        return res.status(401).json({ success: false, message: 'Unauthorize' });
+function authenticate(req: Request, res: Response, next: NextFunction) {
+    const _auth = async () => {
+        const authHeader = req.headers['authorization'];
+        const token = authHeader && authHeader.split(' ')[1]; // Bearer <token>
+        if (!token) {
+            return res.status(401).json({ success: false, message: 'Unauthorize' });
+        }
+        const validatedToken = await validateToken(token);
+        if(validatedToken['success'] == false) return res.status(401).json({ success: false, message: 'Unauthorize'})
+        req.user = validatedToken.data;
+        next();
     }
-    const validatedToken = await validateToken(token);
-    if(validatedToken['success'] == false) return res.status(401).json({ success: false, message: 'Unauthorize'})
-    req.user = validatedToken.data;
-    next();
+    _auth();
 }
 
 /**
@@ -116,7 +119,7 @@ async function authenticate(req: Request, res: Response, next: NextFunction) {
  * @param res 
  * @param next 
  */
-async function permissions(permissionList: string[]) {
+function permissions(permissionList: string[]) {
     return (req: Request, res: Response, next: NextFunction) => {
         let isPermitted = true;
         const userPermissions = req.user.permissions?.[oauthConfig.baseUrl];

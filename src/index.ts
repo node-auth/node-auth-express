@@ -41,7 +41,7 @@ let oauthConfig : OauthConfig = {
  * @param oauthConfigParam 
  * @returns 
  */
-async function auth(oauthConfigParam: OauthConfig) {
+async function nodeAuth(oauthConfigParam: OauthConfig) {
     return (req: Request, res: Response, next: NextFunction) => {
         /**
          * Set configuration
@@ -52,6 +52,8 @@ async function auth(oauthConfigParam: OauthConfig) {
          * Set the nodeAuthConfig for next middleware consumption
          */
         req.nodeAuthConfig = oauthConfig;
+
+        next();
     }
 }
 
@@ -133,4 +135,4 @@ async function permissions(permissionList: string[]) {
     }
 }
 
-module.exports = { auth, authenticate, permissions }
+module.exports = { nodeAuth, authenticate, permissions }

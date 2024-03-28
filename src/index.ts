@@ -1,7 +1,19 @@
 const jwt = require('jsonwebtoken');
 const axios = require('axios');
 import { Request, Response, NextFunction } from 'express';
-import { OauthConfig } from './interfaces';
+
+/**
+ * Interfaces
+ */
+interface OauthConfig {
+    issuerUrl: string,
+    baseUrl?: string,
+    clientId?: string,
+    clientSecret?: string,
+    audience: string,
+    resourceOwner: boolean,
+    secretKey?: string
+}
 
 declare global {
     namespace Express {
@@ -23,20 +35,6 @@ declare global {
 }
 
 /**
- * Configuration
- * @param req 
- * @param res 
- * @param next 
- */
-let oauthConfig : OauthConfig = {
-    issuerBaseUrl: '',
-    baseUrl: '',
-    clientId: '',
-    clientSecret: '',
-    audience: ''
-}
-
-/**
  * Initialization
  * @param oauthConfigParam 
  * @returns 
@@ -44,30 +42,13 @@ let oauthConfig : OauthConfig = {
 function nodeAuth(oauthConfigParam: OauthConfig) {
     return (req: Request, res: Response, next: NextFunction) => {
         /**
-         * Set configuration
-         */
-        setOauthConfig(oauthConfigParam);
-
-        /**
          * Set the nodeAuthConfig for next middleware consumption
          */
-        req.nodeAuthConfig = oauthConfig;
-
+        req.nodeAuthConfig = oauthConfigParam;
         next();
     }
 }
 
-/**
- * Set authentication configuration
- * @param oauthConfigParam 
- */
-function setOauthConfig(oauthConfigParam: OauthConfig) {
-    oauthConfig.issuerBaseUrl = oauthConfigParam.issuerBaseUrl ?? '';
-    oauthConfig.baseUrl = oauthConfigParam.baseUrl ?? '';
-    oauthConfig.clientId = oauthConfigParam.clientId ?? '';
-    oauthConfig.clientSecret = oauthConfigParam.clientSecret ?? '';
-    oauthConfig.audience = oauthConfigParam.audience ?? '';
-}
 
 /**
  * Validate token
@@ -76,17 +57,33 @@ function setOauthConfig(oauthConfigParam: OauthConfig) {
  */
 async function validateToken(token: string, nodeAuthConfig: OauthConfig) {
     try {
-        const csrfTokenResponse = await axios.get(`${nodeAuthConfig.issuerBaseUrl}/o/csrf-token`);
-        const response = await axios.post(`${nodeAuthConfig.issuerBaseUrl}/o/instrospect`, {
-            client_id: nodeAuthConfig.clientId,
-            client_secret: nodeAuthConfig.clientSecret,
-            token
-        }, {
-            headers: {
-                'x-csrf-token': csrfTokenResponse.data['csrfToken']
-            }
-        });
-        return response.data;
+        console.log(token);
+        if(nodeAuthConfig.resourceOwner) {
+            return new Promise((resolve, reject) => {
+                jwt.verify(token, nodeAuthConfig.secretKey, (err: any, decoded: any) => {
+                    if (err) {
+                        reject({success: false, message: err})
+                    }
+                    /** Validate audience */
+                    if(decoded.aud != nodeAuthConfig.audience) reject({success: false, message: err});
+                    /** Validate issuer */
+                    if(decoded.iss != nodeAuthConfig.issuerUrl) reject({success: false, message: err});
+                    resolve({success: true, message: 'authenticated', data: decoded})
+                });
+            })
+        } else {
+            const csrfTokenResponse = await axios.get(`${nodeAuthConfig.issuerUrl}/o/csrf-token`);
+            const response = await axios.post(`${nodeAuthConfig.issuerUrl}/o/instrospect`, {
+                client_id: nodeAuthConfig.clientId,
+                client_secret: nodeAuthConfig.clientSecret,
+                token
+            }, {
+                headers: {
+                    'x-csrf-token': csrfTokenResponse.data['csrfToken']
+                }
+            });
+            return response.data;
+        }
     } catch(err) {
         return {success: false, message: err}
     }
@@ -123,7 +120,7 @@ function authenticate(req: Request, res: Response, next: NextFunction) {
 function permissions(permissionList: string[]) {
     return (req: Request, res: Response, next: NextFunction) => {
         let isPermitted = true;
-        const userPermissions = req.user.permissions?.[oauthConfig.audience];
+        const userPermissions = req.user.permissions?.[req.nodeAuthConfig.audience];
         if (!userPermissions) {
             return res.status(401).json({ success: false, message: 'Unauthorize'});
         }

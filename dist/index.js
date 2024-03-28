@@ -12,19 +12,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const jwt = require('jsonwebtoken');
 const axios = require('axios');
 /**
- * Configuration
- * @param req
- * @param res
- * @param next
- */
-let oauthConfig = {
-    issuerBaseUrl: '',
-    baseUrl: '',
-    clientId: '',
-    clientSecret: '',
-    audience: ''
-};
-/**
  * Initialization
  * @param oauthConfigParam
  * @returns
@@ -32,27 +19,11 @@ let oauthConfig = {
 function nodeAuth(oauthConfigParam) {
     return (req, res, next) => {
         /**
-         * Set configuration
-         */
-        setOauthConfig(oauthConfigParam);
-        /**
          * Set the nodeAuthConfig for next middleware consumption
          */
-        req.nodeAuthConfig = oauthConfig;
+        req.nodeAuthConfig = oauthConfigParam;
         next();
     };
-}
-/**
- * Set authentication configuration
- * @param oauthConfigParam
- */
-function setOauthConfig(oauthConfigParam) {
-    var _a, _b, _c, _d, _e;
-    oauthConfig.issuerBaseUrl = (_a = oauthConfigParam.issuerBaseUrl) !== null && _a !== void 0 ? _a : '';
-    oauthConfig.baseUrl = (_b = oauthConfigParam.baseUrl) !== null && _b !== void 0 ? _b : '';
-    oauthConfig.clientId = (_c = oauthConfigParam.clientId) !== null && _c !== void 0 ? _c : '';
-    oauthConfig.clientSecret = (_d = oauthConfigParam.clientSecret) !== null && _d !== void 0 ? _d : '';
-    oauthConfig.audience = (_e = oauthConfigParam.audience) !== null && _e !== void 0 ? _e : '';
 }
 /**
  * Validate token
@@ -62,17 +33,36 @@ function setOauthConfig(oauthConfigParam) {
 function validateToken(token, nodeAuthConfig) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            const csrfTokenResponse = yield axios.get(`${nodeAuthConfig.issuerBaseUrl}/o/csrf-token`);
-            const response = yield axios.post(`${nodeAuthConfig.issuerBaseUrl}/o/instrospect`, {
-                client_id: nodeAuthConfig.clientId,
-                client_secret: nodeAuthConfig.clientSecret,
-                token
-            }, {
-                headers: {
-                    'x-csrf-token': csrfTokenResponse.data['csrfToken']
-                }
-            });
-            return response.data;
+            console.log(token);
+            if (nodeAuthConfig.resourceOwner) {
+                return new Promise((resolve, reject) => {
+                    jwt.verify(token, nodeAuthConfig.secretKey, (err, decoded) => {
+                        if (err) {
+                            reject({ success: false, message: err });
+                        }
+                        /** Validate audience */
+                        if (decoded.aud != nodeAuthConfig.audience)
+                            reject({ success: false, message: err });
+                        /** Validate issuer */
+                        if (decoded.iss != nodeAuthConfig.issuerUrl)
+                            reject({ success: false, message: err });
+                        resolve({ success: true, message: 'authenticated', data: decoded });
+                    });
+                });
+            }
+            else {
+                const csrfTokenResponse = yield axios.get(`${nodeAuthConfig.issuerUrl}/o/csrf-token`);
+                const response = yield axios.post(`${nodeAuthConfig.issuerUrl}/o/instrospect`, {
+                    client_id: nodeAuthConfig.clientId,
+                    client_secret: nodeAuthConfig.clientSecret,
+                    token
+                }, {
+                    headers: {
+                        'x-csrf-token': csrfTokenResponse.data['csrfToken']
+                    }
+                });
+                return response.data;
+            }
         }
         catch (err) {
             return { success: false, message: err };
@@ -111,7 +101,7 @@ function permissions(permissionList) {
     return (req, res, next) => {
         var _a;
         let isPermitted = true;
-        const userPermissions = (_a = req.user.permissions) === null || _a === void 0 ? void 0 : _a[oauthConfig.audience];
+        const userPermissions = (_a = req.user.permissions) === null || _a === void 0 ? void 0 : _a[req.nodeAuthConfig.audience];
         if (!userPermissions) {
             return res.status(401).json({ success: false, message: 'Unauthorize' });
         }

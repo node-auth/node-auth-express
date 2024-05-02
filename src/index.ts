@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 const axios = require('axios');
-import { Request, Response, NextFunction } from 'express';
+import { NextFunction, Request, Response } from 'express';
 
 /**
  * Interfaces
@@ -55,22 +55,28 @@ function nodeAuth(oauthConfigParam: OauthConfig) {
  * @param token 
  * @returns object
  */
-async function validateToken(token: string, nodeAuthConfig: OauthConfig) {
+async function validateToken(token: string, nodeAuthConfig: OauthConfig, req: Request) {
     try {
-        console.log(token);
-        if(nodeAuthConfig.resourceOwner) {
+        if (nodeAuthConfig.resourceOwner) {
             return new Promise((resolve, reject) => {
                 jwt.verify(token, nodeAuthConfig.secretKey, (err: any, decoded: any) => {
                     if (err) {
-                        reject({success: false, message: err})
+                        reject({ success: false, message: err })
                     }
                     /** Validate audience */
-                    if(decoded.aud != nodeAuthConfig.audience) reject({success: false, message: err});
+                    if (!decoded.permissions[nodeAuthConfig.audience]) {
+                        reject({ success: false, message: err });
+                    }
                     /** Validate issuer */
-                    if(decoded.iss != nodeAuthConfig.issuerUrl) reject({success: false, message: err});
-                    resolve({success: true, message: 'authenticated', data: decoded})
+                    if (decoded.iss != nodeAuthConfig.issuerUrl) {
+                        reject({ success: false, message: err });
+                    }
+                    resolve({ success: true, message: 'authenticated', data: decoded })
                 });
-            })
+            }).catch(err => {
+                console.error('Promise rejected:', err);
+                throw err;
+            });
         } else {
             const csrfTokenResponse = await axios.get(`${nodeAuthConfig.issuerUrl}/o/csrf-token`);
             const response = await axios.post(`${nodeAuthConfig.issuerUrl}/o/instrospect`, {
@@ -84,8 +90,8 @@ async function validateToken(token: string, nodeAuthConfig: OauthConfig) {
             });
             return response.data;
         }
-    } catch(err) {
-        return {success: false, message: err}
+    } catch (err) {
+        return { success: false, message: err }
     }
 }
 
@@ -96,19 +102,23 @@ async function validateToken(token: string, nodeAuthConfig: OauthConfig) {
  * @param next 
  */
 function authenticate(req: Request, res: Response, next: NextFunction) {
-    const _auth = async () => {
-        const authHeader = req.headers['authorization'];
-        const token = authHeader && authHeader.split(' ')[1]; // Bearer <token>
-        if (!token) {
-            return res.status(401).json({ success: false, message: 'Unauthorize' });
+    try {
+        const _auth = async () => {
+            const authHeader = req.headers['authorization'];
+            const token = authHeader && authHeader.split(' ')[1]; // Bearer <token>
+            if (!token) {
+                return res.status(401).json({ success: false, message: 'Unauthorize' });
+            }
+            const _nodeAuthConfig = req.nodeAuthConfig;
+            const validatedToken = await validateToken(token, _nodeAuthConfig, req);
+            if (validatedToken['success'] == false) return res.status(401).json({ success: false, message: 'Unauthorize' });
+            req.user = validatedToken.data;
+            next();
         }
-        const _nodeAuthConfig = req.nodeAuthConfig;
-        const validatedToken = await validateToken(token, _nodeAuthConfig);
-        if(validatedToken['success'] == false) return res.status(401).json({ success: false, message: 'Unauthorize'});
-        req.user = validatedToken.data;
-        next();
+        _auth();
+    } catch (err) {
+        return res.status(401).json({ success: false, message: 'Unauthorize' });
     }
-    _auth();
 }
 
 /**
@@ -119,20 +129,24 @@ function authenticate(req: Request, res: Response, next: NextFunction) {
  */
 function permissions(permissionList: string[]) {
     return (req: Request, res: Response, next: NextFunction) => {
-        let isPermitted = true;
-        const userPermissions = req.user.permissions?.[req.nodeAuthConfig.audience];
-        if (!userPermissions) {
-            return res.status(401).json({ success: false, message: 'Unauthorize'});
-        }
-        for (let i = 0; i < permissionList.length; i++) {
-            const checkPermission = userPermissions.includes(permissionList[i]);
-            if (!checkPermission) {
-                isPermitted = false;
-                break;
+        try {
+            let isPermitted = true;
+            const userPermissions = req.user.permissions?.[req.nodeAuthConfig.audience];
+            if (!userPermissions) {
+                return res.status(401).json({ success: false, message: 'Unauthorize' });
             }
+            for (let i = 0; i < permissionList.length; i++) {
+                const checkPermission = userPermissions.includes(permissionList[i]);
+                if (!checkPermission) {
+                    isPermitted = false;
+                    break;
+                }
+            }
+            if (!isPermitted) return res.status(401).json({ success: false, message: 'Unauthorize' });
+            next();
+        } catch (err) {
+            return res.status(401).json({ success: false, message: 'Unauthorize' });
         }
-        if(!isPermitted) return res.status(401).json({ success: false, message: 'Unauthorize'});
-        next();
     }
 }
 

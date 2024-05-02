@@ -30,10 +30,9 @@ function nodeAuth(oauthConfigParam) {
  * @param token
  * @returns object
  */
-function validateToken(token, nodeAuthConfig) {
+function validateToken(token, nodeAuthConfig, req) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            console.log(token);
             if (nodeAuthConfig.resourceOwner) {
                 return new Promise((resolve, reject) => {
                     jwt.verify(token, nodeAuthConfig.secretKey, (err, decoded) => {
@@ -41,13 +40,18 @@ function validateToken(token, nodeAuthConfig) {
                             reject({ success: false, message: err });
                         }
                         /** Validate audience */
-                        if (decoded.aud != nodeAuthConfig.audience)
+                        if (!decoded.permissions[nodeAuthConfig.audience]) {
                             reject({ success: false, message: err });
+                        }
                         /** Validate issuer */
-                        if (decoded.iss != nodeAuthConfig.issuerUrl)
+                        if (decoded.iss != nodeAuthConfig.issuerUrl) {
                             reject({ success: false, message: err });
+                        }
                         resolve({ success: true, message: 'authenticated', data: decoded });
                     });
+                }).catch(err => {
+                    console.error('Promise rejected:', err);
+                    throw err;
                 });
             }
             else {
@@ -76,20 +80,25 @@ function validateToken(token, nodeAuthConfig) {
  * @param next
  */
 function authenticate(req, res, next) {
-    const _auth = () => __awaiter(this, void 0, void 0, function* () {
-        const authHeader = req.headers['authorization'];
-        const token = authHeader && authHeader.split(' ')[1]; // Bearer <token>
-        if (!token) {
-            return res.status(401).json({ success: false, message: 'Unauthorize' });
-        }
-        const _nodeAuthConfig = req.nodeAuthConfig;
-        const validatedToken = yield validateToken(token, _nodeAuthConfig);
-        if (validatedToken['success'] == false)
-            return res.status(401).json({ success: false, message: 'Unauthorize' });
-        req.user = validatedToken.data;
-        next();
-    });
-    _auth();
+    try {
+        const _auth = () => __awaiter(this, void 0, void 0, function* () {
+            const authHeader = req.headers['authorization'];
+            const token = authHeader && authHeader.split(' ')[1]; // Bearer <token>
+            if (!token) {
+                return res.status(401).json({ success: false, message: 'Unauthorize' });
+            }
+            const _nodeAuthConfig = req.nodeAuthConfig;
+            const validatedToken = yield validateToken(token, _nodeAuthConfig, req);
+            if (validatedToken['success'] == false)
+                return res.status(401).json({ success: false, message: 'Unauthorize' });
+            req.user = validatedToken.data;
+            next();
+        });
+        _auth();
+    }
+    catch (err) {
+        return res.status(401).json({ success: false, message: 'Unauthorize' });
+    }
 }
 /**
  * Permission
@@ -100,21 +109,26 @@ function authenticate(req, res, next) {
 function permissions(permissionList) {
     return (req, res, next) => {
         var _a;
-        let isPermitted = true;
-        const userPermissions = (_a = req.user.permissions) === null || _a === void 0 ? void 0 : _a[req.nodeAuthConfig.audience];
-        if (!userPermissions) {
-            return res.status(401).json({ success: false, message: 'Unauthorize' });
-        }
-        for (let i = 0; i < permissionList.length; i++) {
-            const checkPermission = userPermissions.includes(permissionList[i]);
-            if (!checkPermission) {
-                isPermitted = false;
-                break;
+        try {
+            let isPermitted = true;
+            const userPermissions = (_a = req.user.permissions) === null || _a === void 0 ? void 0 : _a[req.nodeAuthConfig.audience];
+            if (!userPermissions) {
+                return res.status(401).json({ success: false, message: 'Unauthorize' });
             }
+            for (let i = 0; i < permissionList.length; i++) {
+                const checkPermission = userPermissions.includes(permissionList[i]);
+                if (!checkPermission) {
+                    isPermitted = false;
+                    break;
+                }
+            }
+            if (!isPermitted)
+                return res.status(401).json({ success: false, message: 'Unauthorize' });
+            next();
         }
-        if (!isPermitted)
+        catch (err) {
             return res.status(401).json({ success: false, message: 'Unauthorize' });
-        next();
+        }
     };
 }
 module.exports = { nodeAuth, authenticate, permissions };
